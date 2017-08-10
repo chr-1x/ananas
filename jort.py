@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 from proboscidean import Proboscidean, interval
 import nltk
 
@@ -20,7 +19,6 @@ def make_noun_file():
           word,tag = get_tagged_word(word)
           if len(word) > 2 and (tag == 'NN' or tag == 'NNS'):
               print(word, file=g)
-
 
 def get_line(f, n):
   for i, line in enumerate(f):
@@ -48,8 +46,8 @@ class jorts(Proboscidean):
         word = get_line(self._words, self.line)
         if (word == None): 
           self.line = 0
-          f.seek(0)
-          word = get_line(f, 0)
+          self._words.seek(0)
+          word = get_line(self._words, 0)
 
         jord = jort(word)
         self.line += 1
