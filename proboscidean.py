@@ -50,10 +50,12 @@ class Proboscidean:
 
         if (self.name not in cfg.sections()):
             self.log(None, "\"{0}\" section not found in {1}, aborting.\n".format(self.name, self._cfgname))
+            return False
 
         section = cfg[self.name]
         for attr in section:
             setattr(self, attr, section[attr])
+        return True
 
     def save_to_cfg(self):
         cfg = configparser.ConfigParser()
@@ -61,6 +63,7 @@ class Proboscidean:
 
         if (self.name not in cfg.sections()):
             self.log(None, "\"{0}\" section not found in {1}, aborting.\n".format(self.name, self._cfgname))
+            return False
 
         section = cfg[self.name]
         for attr, value in self.__dict__.items():
@@ -68,6 +71,7 @@ class Proboscidean:
                 cfg[attr] = value
         with open(self._cfgname, 'w') as cfgfile:
             cfg.write(cfgfile)
+        return True
 
     def startup(self):
         self._state = Proboscidean.STARTING
