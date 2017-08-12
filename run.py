@@ -16,7 +16,7 @@ if __name__ == "__main__":
     #signal.signal(signal.SIGINT, shutdown_all)
     #signal.signal(signal.SIGABRT, shutdown_all)
     #signal.signal(signal.SIGTERM, shutdown_all)
-    bots = [jorts(interactive=True), psa(interactive=True), roll(interactive=True)]
+    bots = [roll(interactive=True)] #, jorts(interactive=True), psa(interactive=True)]
     try:
         while(True): pass
     except KeyboardInterrupt:
