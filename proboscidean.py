@@ -1,6 +1,16 @@
-import os, sys, re, time, datetime, threading, configparser, inspect, getpass
+import os, sys, re, time, threading
+import calendar
+from datetime import datetime, timedelta, timezone
+import configparser, inspect, getpass, traceback
+from html.parser import HTMLParser
 import mastodon
-from mastodon import Mastodon
+from mastodon import Mastodon, StreamListener
+
+# Decorators
+
+def reply(f):
+    f.reply = True
+    return f
 
 def interval(seconds):
     def wrapper(f):
@@ -8,17 +18,152 @@ def interval(seconds):
         return f
     return wrapper
 
-def reply(f):
-    f.reply = True
-    return f
-
 def scheduled(**kwargs):
     def wrapper(f):
-        f.scheduled = kwargs
+        if (not hasattr(f, "scheduled")):
+            f.scheduled = [kwargs]
+        else:
+            f.scheduled.append(kwargs)
         return f
     return wrapper
 
-class Proboscidean:
+# Utilities
+
+def total_seconds(dt):
+    """Returns the total number of seconds in a timedelta."""
+    return dt.seconds + dt.days * 24 * 60 * 60
+
+def schedule_next(f, t = datetime.now(), tLast = datetime.now()):
+    """
+    Calculate the number of seconds from now until the function should next run.
+    This function handles both cron-like and interval-like scheduling via the
+    following:
+     ∗ If no interval and no schedule are specified, return 0
+     ∗ If an interval is specified but no schedule, return the number of seconds
+       from <t> until <interval> has passed since <tLast> or 0 if it's overdue.
+     ∗ If a schedule is passed but no interval, figure out when next to run by
+       parsing the schedule according to the following rules:
+         ∗ If all of second, minute, hour, day_of_week/day_of_month, month, year
+           are specified, then the time to run is singular and the function will
+           run only once at that time. If it has not happened yet, return the
+           number of seconds from <t> until that time, otherwise return -1.
+         ∗ If one or more are unspecified, then they are treated as open slots.
+           return the number of seconds from <t> until the time next fits within
+           the specified constraints, or if it never will again return -1.
+             ∗ Only one of day_of_week and day_of_month may be specified. if both
+               are specified, then day_of_month is used and day_of_week is ignored.
+         ∗ If all are unspecified treat it as having no schedule specified
+     ∗ If both a schedule and an interval are specified, TODO but it should do
+       something along the lines of finding the next multiple of interval from tLast 
+       that fits the schedule spec and returning the number of seconds until then.
+    """
+    has_interval = hasattr(f, "interval")
+    has_schedule = hasattr(f, "schedule")
+    schedule_fields = ["second", "minute", "hour", "day_of_week", "day_of_month", "month", "year"]
+    has_schedule = has_schedule and any(k in f.schedule for k in schedule_fields))
+    if (not has_interval and not has_schedule):
+        return 0
+    if (has_interval and not has_schedule):
+        tNext = tLast + timedelta(seconds = f.interval)
+        return max(total_seconds(tNext - t), 0)
+    if (has_schedule): # and not has_interval):
+        # Operate in day-of-month mode unless day-of-week is specified
+        use_day_of_week = "day_of_week" in f.schedule
+
+        SECOND = 0
+        MINUTE = 1
+        HOUR = 2
+        DAY_OF_WEEK = 3
+        DAY_OF_MONTH = 3
+        MONTH = 4
+        YEAR = 5
+
+        MONTH_LIMIT = -2
+
+        spec = []
+        now = [t.second, t.minute, t.hour, t.weekday() if use_day_of_week else t.day, t.month, t.year]
+        next = [-1, -1, -1, -1, -1, -1]
+        wrap = [60, 60, 24, 7 if use_day_of_week else MONTH_LIMIT, 12, 17776]
+
+        def compare(tlist1, tlist2):
+            for i in reversed(range(6)):
+                if tlist1[i] < tlist2[i]: return -1
+                if tlist1[i] > tlist2[i]: return 1
+            return 0
+        def specified(slot): return spec[slot] != -1
+
+        spec.append(f.schedule.get("second", -1))
+        spec.append(f.schedule.get("minute", -1))
+        spec.append(f.schedule.get("hour", -1))
+        if use_day_of_week:
+            spec.append(f.schedule.get("day_of_week", -1))
+        else:
+            spec.append(f.schedule.get("day_of_month", -1))
+        spec.append(f.schedule.get("month", -1))
+        spec.append(f.schedule.get("year", -1))
+
+        # the largest slot such that the value for now in that slot was actually
+        # greater than a specified value
+        largest_spec_clobbered = -1
+
+        for slot, value in spec:
+            if value == -1:
+                next[slot] = now[slot]
+            else:
+                next[slot] = spec[slot]
+                if now[slot] > spec[slot]:
+                    largest_spec_clobbered = slot
+
+        if compare(next, now) < 0:
+            # if next is in the past from now, one of the values of now has to
+            # have been greater than a specified value
+            assert largest_spec_clobbered != -1
+            # If the year is specified, there's nothing we can do
+            if largest_spec_clobbered == YEAR: return -1
+
+            # find the next largest unspecified slot
+            slot_to_incr = largest_slot_clobbered + 1
+            while not specified(slot_to_incr): slot_to_incr += 1
+
+            # increment that next largest unspecified slot
+            next[slot_to_incr] += 1
+
+        # Now go through and keep the values in range by doing the carry if necessary,
+        # and minimize smaller slots to achieve an overall minimal future result.
+        # By carrying over specified values, we properly handle the edge cases.
+        carry = 0
+        for slot in range(6):
+            if slot < largest_slot_clobbered:
+                if not specified(slot):
+                    next[slot] = 0
+            else:
+                if not specified(slot):
+                    lim = wrap[slot]
+                    if lim == MONTH_LIMIT:
+                        lim = calendar.monthrange(next[YEAR], next[MONTH])[1]
+                    carry, next[slot] = divmod(next[slot] + carry, lim)
+        assert compare(next, now) > 0
+
+class HTMLTextParser(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.text = ""
+    def handle_data(self, data):
+        self.text += data;
+
+# TODO: add a parameter for whether to infer linebreaks from the html tags
+def html_strip_tags(html_str):
+    parser = HTMLTextParser()
+    parser.feed(html_str)
+    return parser.text
+
+
+class Proboscidean(StreamListener):
+    """
+    Main bot class
+    We subclass StreamListener so that we can use it as its own callback
+    """
+
     INITIALIZING = 0
     STARTING = 1
     RUNNING = 2
@@ -35,6 +180,7 @@ class Proboscidean:
 
         self._alive = threading.Condition()
         self._threads = []
+        # TODO replace with something more intelligent?
         self._reply_funcs = []
 
         self._mastodon = None
@@ -52,6 +198,15 @@ class Proboscidean:
         if not self.login(): return
 
         self.startup()
+
+    def log(self, id, msg):
+        if (id == None): id = self.name
+        else: id = self.name + "." + id
+        ts = datetime.now()
+        msg_f = "[{0:%Y-%m-%d %H:%M:%S}] {1}: {2}".format(ts, id, msg)
+
+        if self._log.closed or self._log_to_stderr: print(msg_f, file=sys.stderr)
+        if not self._log.closed: print(msg_f, file=self._log)
 
     def load_from_cfg(self):
         cfg = configparser.ConfigParser()
@@ -100,11 +255,19 @@ class Proboscidean:
         self.start()
         
         def interval_threadproc(f):
-            self.log(f.__name__, "Running with interval {0}".format(f.interval))
+            self.log(f.__name__, "Started")
             while (True):
                 self._alive.acquire()
-                f()
+                try:
+                    f()
+                except Exception as e:
+                    self.log(f.__name__, "Fatal exception: {}\n{}".format(repr(e), traceback.format_exc()))
+                    self._alive.release()
+                    return 0
+
+                interval = schedule_next(f)
                 self._alive.wait(f.interval)
+
                 if (self._state == Proboscidean.STOPPING):
                     self._alive.release()
                     self.log(f.__name__, "Shutting down")
@@ -121,15 +284,9 @@ class Proboscidean:
             if hasattr(f, "reply"):
                 self._reply_funcs.append(f)
 
+        self._mastodon.user_stream(self)
+
         self._state = Proboscidean.RUNNING
-
-    @interval(seconds=60)
-    def run_scheduled(self):
-        pass
-
-    @interval(seconds=30)
-    def check_mentions(self):
-        pass
 
     def shutdown(self):
         self._alive.acquire()
@@ -142,15 +299,6 @@ class Proboscidean:
         self.save_to_cfg()
 
         self._log.close()
-
-    def log(self, id, msg):
-        if (id == None): id = self.name
-        else: id = self.name + "." + id
-        ts = datetime.datetime.now()
-        msg_f = "[{0:%Y-%m-%d %H:%M:%S}] {1}: {2}".format(ts, id, msg)
-
-        if self._log.closed or self._log_to_stderr: print(msg_f, file=sys.stderr)
-        if not self._log.closed: print(msg_f, file=self._log)
 
     def login(self):
         if self._interactive and not self.interactive_login(): 
@@ -170,9 +318,10 @@ class Proboscidean:
             return False
 
         self._mastodon = Mastodon(client_id = self.client_id, 
-                                  client_secrect = self.client_secret, 
+                                  client_secret = self.client_secret, 
                                   access_token = self.access_token, 
                                   api_base_url = self.domain)
+                                  #debug_requests = True)
         return True
 
     def interactive_login(self):
@@ -188,7 +337,7 @@ class Proboscidean:
             client_name = client_name.strip()
             if (client_name == ""): client_name = self.name
             self.client_id, self.client_secret = Mastodon.create_app(client_name, 
-                                                                     "https://"+self.domain)
+                                                                     api_base_url="https://"+self.domain)
             # TODO handle failure
             self.save_to_cfg()
         if (not hasattr(self, "access_token")):
@@ -201,10 +350,20 @@ class Proboscidean:
                                     api_base_url = "https://"+self.domain)
                 self.access_token = mastodon.log_in(email, password)
             except ValueError as e:
-                self.log("login", "Could not authenticate with {0} as '{1}'".format(self.domain, email))
+                self.log("login", "Could not authenticate with {0} as '{1}': ".format(self.domain, email))
+                self.log("login", str(e))
                 self.log("debug", "using the password {0}".format(password))
                 return False
+        self.save_to_cfg()
         return True
 
-    def toot(self, msg):
-        self._mastodon.toot(msg)
+    @interval(seconds=60)
+    def run_scheduled(self):
+        pass
+
+    def on_notification(self, notif):
+        self.log("debug", "Got a {} from {} at {}".format(notif["type"], notif["account"]["username"], notif["created_at"]))
+        if (notif["type"] == "mention"):
+            for f in self._reply_funcs:
+                f(notif["status"], notif["account"])
+
