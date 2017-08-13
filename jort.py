@@ -1,4 +1,4 @@
-from proboscidean import Proboscidean, interval
+from pineapple import PineappleBot, interval
 import nltk
 
 def get_tagged_word(w):
@@ -31,7 +31,7 @@ def jort(w):
     while (w[0] not in "aeiou"): w = w[1:]
     return "j" + w
 
-class jorts(Proboscidean):
+class jorts(PineappleBot):
     def init(self):
         self.line = 0
 
@@ -41,7 +41,7 @@ class jorts(Proboscidean):
     def stop(self):
         self._words.close()
 
-    @interval(seconds=3)
+    @interval(60)
     def jort(self):
         word = get_line(self._words, self.line)
         if (word == None): 
