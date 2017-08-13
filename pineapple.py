@@ -8,6 +8,9 @@ from mastodon import Mastodon, StreamListener
 
 # TODO: Polish up sample bots for distribution (and real use!)
 
+# TODO: Report exceptions using a default reporter (looks for admin handle in
+# config and DMs them) or user-specified reporter
+
 # TODO: Write up documentation
 
 # TODO: Wrap up in packaging for pypi!!!
