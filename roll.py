@@ -1,10 +1,6 @@
-import random, string, itertools
+import random, string, itertools, traceback
 from more_itertools import peekable
 from pineapple import PineappleBot, reply, html_strip_tags
-
-# TODO: TypeError must be str, not int when parsing '@roll that's a bit odd but i'll accept quirky over broken any day'
-
-# TODO: 1 = 1 when parsing '@roll my gods you're beautiful'
 
 def peek(gen): return gen.peek()
 
@@ -79,20 +75,21 @@ def parse_dice(text):
 
     def parse_roll(tokens):
         p = peek(tokens)
-        if (p == 'd'):
-            c = 1
-        else:
-            c = next(tokens)
+        if (p == 'd'): c = -1
+        else: c = next(tokens)
         try:
             if (peek(tokens) == 'd'):
                 d = next(tokens)
-                sides = next(tokens)
+                sides = int(next(tokens))
             else: return ('c', c)
-        except StopIteration: return ('c', c)
+        except StopIteration: 
+            if c < 0: raise ValueError() # lone 'd'
+            return ('c', c)
+        c = abs(c)
         try:
             if peek(tokens) == 'd' or peek(tokens) == 'k':
                 dk = next(tokens)
-                num = next(tokens)
+                num = int(next(tokens))
             else:
                 return ('r', c, sides)
         except StopIteration: return ('r', c, sides)
@@ -183,7 +180,7 @@ def perform_roll(dice=1, sides=6, keep=0, drop=0):
 
     return r
 
-class roll(PineappleBot):
+class DiceBot(PineappleBot):
     def start(self):
         pass
 
@@ -199,9 +196,10 @@ class roll(PineappleBot):
         message = ""
         try:
             rolls = parse_dice(raw)
-        except:
-            rolls = ()
-            message = "Sorry, I couldn't figure out what dice to roll!"
+        except Exception as e:
+            self.report_error("{}\n{}".format(repr(e), traceback.format_exc()[:300]))
+            rolls = [('r', 1, 6)]
+            message = "Not sure what that means, rolling 1d6.\n"
 
         for i, r in enumerate(rolls):
             if (len(rolls) > 1):

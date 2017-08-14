@@ -6,19 +6,23 @@ from html.parser import HTMLParser
 import mastodon
 from mastodon import Mastodon, StreamListener
 
+# TODO: Default runner that takes command line args
 # TODO: Polish up sample bots for distribution (and real use!)
-
-# TODO: Report exceptions using a default reporter (looks for admin handle in
-# config and DMs them) or user-specified reporter
-
+# TODO: Final pass on code quality and commenting
 # TODO: Write up documentation
-
 # TODO: Wrap up in packaging for pypi!!!
 
+###
 # Decorators
+###
 
 def reply(f):
+    """ Mark f as a handler for mention notifications. """
     f.reply = True
+    return f
+
+def error_reporter(f):
+    f.error_reporter = True
     return f
 
 def interval(seconds):
@@ -158,7 +162,7 @@ class PineappleBot(StreamListener):
 
     _http_re = re.compile("^http[s]?://.*$")
 
-    def __init__(self, name=None, log_to_stderr=True, use_common_cfg=True, interactive=False):
+    def __init__(self, name=None, log_to_stderr=True, use_common_cfg=True, interactive=False, verbose=False):
         if (name is None): name = self.__class__.__name__
         self.name = name
         self._state = PineappleBot.INITIALIZING
@@ -166,10 +170,12 @@ class PineappleBot(StreamListener):
         self._alive = threading.Condition()
         self._threads = []
         self._reply_funcs = []
-        self._stream = None
+        self._report_funcs = []
 
         self._mastodon = None
+        self._stream = None
         self._interactive = interactive
+        self._verbose = verbose
 
         self._log_to_stderr = log_to_stderr
         self._logname = self.name + ".log"
@@ -238,7 +244,11 @@ class PineappleBot(StreamListener):
         self._state = PineappleBot.STARTING
         self.log(None, "Starting bot of type {0}".format(self.name))
 
-        self.start()
+        try:
+            self.start()
+        except Exception as e:
+            self.log(None, "Fatal exception: {}\n{}".format(repr(e), traceback.format_exc()))
+            return
         
         def interval_threadproc(f):
             self.log(f.__name__, "Started")
@@ -253,14 +263,17 @@ class PineappleBot(StreamListener):
                     try:
                         f()
                     except Exception as e:
-                        self.log(f.__name__, "Fatal exception: {}\n{}".format(repr(e), traceback.format_exc()))
+                        error = "Fatal exception: {}\n{}".format(repr(e), traceback.format_exc())
+                        self.log(f.__name__, error)
+                        self.report_error(error)
+                    finally:
                         self._alive.release()
                         return 0
 
                     t = datetime.now()
                     interval = interval_next(f, t, t)
 
-                self.log(f.__name__ + ".debug", "Next wait interval: {}s".format(interval))
+                if self._verbose: self.log(f.__name__ + ".debug", "Next wait interval: {}s".format(interval))
                 tLast = t
                 self._alive.wait(max(interval, 1))
                 if (self._state == PineappleBot.STOPPING):
@@ -278,6 +291,9 @@ class PineappleBot(StreamListener):
 
             if hasattr(f, "reply"):
                 self._reply_funcs.append(f)
+
+            if hasattr(f, "error_reporter"):
+                self._report_funcs.append(f)
 
         if len(self._reply_funcs) > 0:
             self._stream = self._mastodon.user_stream(self, async=True)
@@ -323,41 +339,65 @@ class PineappleBot(StreamListener):
         return True
 
     def interactive_login(self):
-        if (not hasattr(self, "domain")):
-            domain = input("{0}: Enter the instance domain [mastodon.social]: ".format(self.name))
-            domain = domain.strip()
-            if (domain == ""): domain = "mastodon.social"
-            self.domain = domain
-        # We have to generate these two together, if just one is 
-        # specified in the config file it's no good.
-        if (not hasattr(self, "client_id") or not hasattr(self, "client_secret")):
-            client_name = input("{0}: Enter a name for this bot or service [{0}]: ".format(self.name))
-            client_name = client_name.strip()
-            if (client_name == ""): client_name = self.name
-            self.client_id, self.client_secret = Mastodon.create_app(client_name, 
-                                                                     api_base_url="https://"+self.domain)
-            # TODO handle failure
-            self.save_to_cfg()
-        if (not hasattr(self, "access_token")):
-            email = input("{0}: Enter the account email: ".format(self.name))
-            email = email.strip()
-            password = getpass.getpass("{0}: Enter the account password: ".format(self.name))
-            try:
-                mastodon = Mastodon(client_id = self.client_id,
-                                    client_secret = self.client_secret,
-                                    api_base_url = "https://"+self.domain)
-                self.access_token = mastodon.log_in(email, password)
+        try:
+            if (not hasattr(self, "domain")):
+                domain = input("{0}: Enter the instance domain [mastodon.social]: ".format(self.name))
+                domain = domain.strip()
+                if (domain == ""): domain = "mastodon.social"
+                self.domain = domain
+            # We have to generate these two together, if just one is 
+            # specified in the config file it's no good.
+            if (not hasattr(self, "client_id") or not hasattr(self, "client_secret")):
+                client_name = input("{0}: Enter a name for this bot or service [{0}]: ".format(self.name))
+                client_name = client_name.strip()
+                if (client_name == ""): client_name = self.name
+                self.client_id, self.client_secret = Mastodon.create_app(client_name, 
+                                                                         api_base_url="https://"+self.domain)
+                # TODO handle failure
                 self.save_to_cfg()
-            except ValueError as e:
-                self.log("login", "Could not authenticate with {0} as '{1}': ".format(self.domain, email))
-                self.log("login", str(e))
-                self.log("debug", "using the password {0}".format(password))
-                return False
-        return True
+            if (not hasattr(self, "access_token")):
+                email = input("{0}: Enter the account email: ".format(self.name))
+                email = email.strip()
+                password = getpass.getpass("{0}: Enter the account password: ".format(self.name))
+                try:
+                    mastodon = Mastodon(client_id = self.client_id,
+                                        client_secret = self.client_secret,
+                                        api_base_url = "https://"+self.domain)
+                    self.access_token = mastodon.log_in(email, password)
+                    self.save_to_cfg()
+                except ValueError as e:
+                    self.log("login", "Could not authenticate with {0} as '{1}': ".format(self.domain, email))
+                    self.log("login", str(e))
+                    self.log("debug", "using the password {0}".format(password))
+                    return False
+            return True
+        except KeyboardInterrupt:
+            return False
+
+    @error_reporter
+    def default_report_handler(self, error):
+        if self._mastodon and hasattr(self, "admin"):
+            self._mastodon.status_post(("@{} ERROR REPORT from {}:\n{}".format(self.admin, self.name, error))[:500], visibility="direct")
+
+    def report_error(self, error):
+        """Report an error that occurred during bot operations. The default
+        handler tries to DM the bot admin, if one is set, but more handlers can
+        be added by using the @error_reporter decorator."""
+        for f in self._report_funcs:
+            f(error)
 
     def on_notification(self, notif):
         self.log("debug", "Got a {} from {} at {}".format(notif["type"], notif["account"]["username"], notif["created_at"]))
         if (notif["type"] == "mention"):
             for f in self._reply_funcs:
-                f(notif["status"], notif["account"])
+                try:
+                    f(notif["status"], notif["account"])
+                except Exception as e:
+                    error = "Fatal exception: {}\n{}".format(repr(e), traceback.format_exc())
+                    self.log(f.__name__, error)
+                    self.report_error(error)
 
+# Exceptions
+
+class ConfigurationError(Exception):
+    pass
