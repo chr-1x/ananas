@@ -3,3 +3,4 @@ custom/
 *.cfg
 *.json
 *.log
+*.egg-info/
