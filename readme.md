@@ -3,7 +3,7 @@ The Python Bot Framework for Mastodon
 
 > 🍍
 
--- @acw@mastodon.social
+-- @acw​@mastodon.social
 
 ## What is Ananas?
 
