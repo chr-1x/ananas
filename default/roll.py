@@ -68,8 +68,8 @@ def parse_dice(text):
             roll = parse_roll_expr(tokens)
             if (roll[0] != 'c'):
                 rolls.append(roll)
-        except AbortedParseError as e: print(repr(e))
-        except ValueError as e: print(repr(e))
+        except AbortedParseError as e: pass #print(repr(e))
+        except ValueError as e: pass #print(repr(e))
 
         while True:
             try:
@@ -78,8 +78,8 @@ def parse_dice(text):
                 if (roll[0] != 'c'):
                     rolls.append(roll)
             except StopIteration: break
-            except AbortedParseError as e: print(repr(e)); continue
-            except ValueError as e: print(repr(e)); continue
+            except AbortedParseError as e: continue #print(repr(e)); continue
+            except ValueError as e: continue #print(repr(e)); continue
 
         return rolls
 

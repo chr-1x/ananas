@@ -4,8 +4,8 @@ from datetime import datetime, timedelta, timezone
 from html.parser import HTMLParser
 import mastodon
 from mastodon import Mastodon, StreamListener
+import mastodon_patch
 
-# TODO: Write local version of Mastodon.py async streaming for use until a PR is decided on
 # TODO: Polish up sample bots for distribution (and real use!)
 # TODO: Final pass on code quality and commenting
 # TODO: Write up documentation
@@ -39,11 +39,11 @@ def schedule(**kwargs):
         return f
     return wrapper
 
-def hourly():
-    return schedule(minute=0)
+def hourly(minute=0):
+    return schedule(minute=minute)
 
-def daily(hour=0):
-    return schedule(hour=hour)
+def daily(hour=0, minute=0):
+    return schedule(hour=hour, minute=minute)
 
 # Utilities
 
@@ -166,10 +166,12 @@ class PineappleBot(StreamListener):
         def __setattr__(self, key, value): self[key] = value
         def __delattr(self, key): del self[key]
 
-        def load(self, name):
+        def load(self, name=None):
             """ Load section <name> from the config file into this object,
             replacing/overwriting any values currently cached in here."""
-            self._name = name
+            if (name != None):
+                self._name = name
+
             self._cfg.read(self._filename)
             if (name not in self._cfg.sections()): 
                 self._bot.log("config", "Section {} not in {}, aborting.".format(self._name, self._filename))
@@ -319,6 +321,7 @@ class PineappleBot(StreamListener):
                                   access_token = self.config.access_token, 
                                   api_base_url = self.config.domain)
                                   #debug_requests = True)
+        self.log("debug", "Mastodon IS patched" if Mastodon._patched else "Mastodon IS NOT patched!!!")
         return True
 
     def interactive_login(self):
