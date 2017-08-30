@@ -14,8 +14,8 @@ def shutdown_all(signum, frame):
         if bot.state == PineappleBot.RUNNING: bot.shutdown()
     sys.exit("Shutdown complete")
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Pineapple command line interface.")
+def main():
+    parser = argparse.ArgumentParser(description="Pineapple command line interface.", prog="ananas")
     parser.add_argument("config", help="A cfg file to read bot configuration from.")
     parser.add_argument("-v", "--verbose", action="store_true", help="Log more extensive messages for e.g. debugging purposes.")
     parser.add_argument("-i", "--interactive", action="store_true", help="Use interactive prompts for e.g. mastodon login")
@@ -59,3 +59,6 @@ if __name__ == "__main__":
         while(True): pass
     except KeyboardInterrupt:
         shutdown_all(None, None)
+
+if __name__ == "__main__":
+    main()
