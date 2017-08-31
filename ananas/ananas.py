@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from html.parser import HTMLParser
 import mastodon
 from mastodon import Mastodon, StreamListener
-import mastodon_patch
+import ananas.mastodon_patch
 
 # TODO: Polish up sample bots for distribution (and real use!)
 # TODO: Final pass on code quality and commenting

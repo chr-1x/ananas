@@ -2,7 +2,7 @@
 import os, sys, signal, argparse, configparser, traceback
 from contextlib import closing
 from ananas import PineappleBot
-import default
+import ananas.default
 
 # Add the cwd to the module search path so that we can load user bot classes
 sys.path.append(os.getcwd())
