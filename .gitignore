@@ -1,5 +1,7 @@
 __pycache__/
 custom/
+dist/
+build/
 *.cfg
 *.json
 *.log
