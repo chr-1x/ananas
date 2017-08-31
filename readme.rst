@@ -3,7 +3,7 @@ Ananas
 
 The Python Bot Framework for Mastodon
 
-    :pineapple:
+    🍍
 
 -- @acw​@mastodon.social
 
