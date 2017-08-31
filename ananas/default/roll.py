@@ -5,10 +5,11 @@ from ananas import PineappleBot, reply, html_strip_tags
 def peek(gen): return gen.peek()
 
 # DICE PARSING
-# Formats we accept:
+# Formats we want to accept:
 #  @roll [#]d#[±#]
 #  @roll #d#d#[±#]
 #  @roll #d#k#[±#]
+#  @roll #x[above]
 # We also want to accept any amount of whitespace (but not other
 # characters) between portions of the roll:
 #  @roll 3 d20 + 2
@@ -36,6 +37,8 @@ def peek(gen): return gen.peek()
 # becomes
 #  ('+', ('r', 3, 20, 'k', 1) ('+', ('r', 1, 8), ('c', 1)))
 
+ops = "+-*x"
+
 def parse_dice(text):
     class AbortedParseError(Exception): pass
 
@@ -55,7 +58,7 @@ def parse_dice(text):
                     s = ""
                     ws = False
                 if c in string.whitespace: ws = True; continue
-                elif c in ["+", "-", "*", "d", "k", ";", ",", "\n"]: yield c, ws; ws = False
+                elif c in ops+"dk;,\n": yield c, ws; ws = False
                 elif c == '\U0001F4AF': yield 100, ws; ws = False
                 else: yield 'z', ws; ws = False
         if len(s) > 0:
@@ -65,16 +68,17 @@ def parse_dice(text):
     def parse_roll_list(tokens):
         rolls = []
         try:
-            roll = parse_roll_expr(tokens)
+            roll = parse_roll_add_expr(tokens)
             if (roll[0] != 'c'):
                 rolls.append(roll)
+        except StopIteration: return rolls
         except AbortedParseError as e: pass #print(repr(e))
         except ValueError as e: pass #print(repr(e))
 
         while True:
             try:
                 next(tokens)
-                roll = parse_roll_expr(tokens)
+                roll = parse_roll_add_expr(tokens)
                 if (roll[0] != 'c'):
                     rolls.append(roll)
             except StopIteration: break
@@ -83,14 +87,38 @@ def parse_dice(text):
 
         return rolls
 
-    def parse_roll_expr(tokens):
+    # 2 * 3 x 4
+    # (* 2 3)
+    # (x (* 2 3) 4)
+    # (* 2 (x 3 4))
+
+    # 2 x 3 x 4
+    # (x 2 3)
+    # (x (x 2 3) 4)
+
+    def parse_roll_mul_expr(tokens):
         lhs = parse_roll(tokens)
-        try: 
-            op = expect(tokens, lambda t,ws: t in ['+', '-', '*'])
-            rhs = parse_roll_expr(tokens)
-        except AbortedParseError: return lhs
-        except StopIteration: return lhs
-        return (op, lhs, rhs)
+        while True:
+            try: 
+                if (peek(tokens)[0] not in "*x"): break
+                op = expect(tokens, lambda t,ws: t in "*x")
+                rhs = parse_roll(tokens)
+                lhs = (op, lhs, rhs)
+            except AbortedParseError: return lhs
+            except StopIteration: return lhs
+        return lhs
+
+    def parse_roll_add_expr(tokens):
+        lhs = parse_roll_mul_expr(tokens)
+        while True:
+            try: 
+                if (peek(tokens)[0] not in "+-"): break
+                op = expect(tokens, lambda t,ws: t in "+-")
+                rhs = parse_roll_mul_expr(tokens)
+                lhs = (op, lhs, rhs)
+            except AbortedParseError: return lhs
+            except StopIteration: return lhs
+        return lhs
 
     def parse_roll(tokens):
         p,ws = peek(tokens)
@@ -134,7 +162,7 @@ def spec_dice(spec):
         if len(r) == 4 and ((r[2] == 'd' and r[3] < r[0]) or (r[2] == 'k' and r[3] > 0)):
             s += "{}{}".format(r[2], r[3])
         return s
-    elif spec[0] in ['+', '-', '*']:
+    elif spec[0] in ops:
         return "{} {} {}".format(spec_dice(spec[1]), spec[0], spec_dice(spec[2]))
     else: raise ValueError("Invalid dice specification")
 
@@ -142,13 +170,25 @@ def roll_dice(spec):
     """ Perform the dice rolls and replace all roll expressions with lists of
     the dice faces that landed up. """
     if spec[0] == 'c': return spec
-    elif spec[0] == 'r':
+    if spec[0] == 'r':
         r = spec[1:]
         if len(r) == 2: return ('r', perform_roll(r[0], r[1]))
-        k = r[3] if r[2] == 'k' else 0
-        d = r[3] if r[2] == 'd' else 0
+        k = r[3] if r[2] == 'k' else -1 
+        d = r[3] if r[2] == 'd' else -1
         return ('r', perform_roll(r[0], r[1], k, d))
-    elif spec[0] in ['+', '-', '*']:
+    if spec[0] == "x":
+        c = None
+        roll = None
+        if spec[1][0] == "c": c = spec[1]
+        elif spec[1][0] == "r": roll = spec[1]
+        if spec[2][0] == "c": c = spec[2]
+        elif spec[2][0] == "r": roll = spec[2]
+
+        if (c == None or roll == None):
+            return ('*', roll_dice(spec[1]), roll_dice(spec[2]))
+        else:
+            return ("x", [roll_dice(roll) for i in range(c[1])])
+    if spec[0] in ops:
         return (spec[0], roll_dice(spec[1]), roll_dice(spec[2]))
     else: raise ValueError("Invalid dice specification")
 
@@ -157,13 +197,16 @@ def sum_dice(spec):
     the rolls. """
     if spec[0] == 'c': return spec[1]
     elif spec[0] == 'r': return sum(spec[1])
-    elif spec[0] in ['+', '-', '*']:
+    elif spec[0] == 'x':
+        return [sum_dice(r) for r in spec[1]]
+    elif spec[0] in ops:
         return (spec[0], sum_dice(spec[1]), sum_dice(spec[2]))
     else: raise ValueError("Invalid dice specification")
 
 def eval_dice(spec):
     if spec[0] == 'c': return spec[1]
     elif spec[0] == 'r': return sum(spec[1])
+    elif spec[0] == 'x': return sum(eval_dice(r) for r in spec[1])
     elif spec[0] == '+': return eval_dice(spec[1]) + eval_dice(spec[2])
     elif spec[0] == '-': return eval_dice(spec[1]) - eval_dice(spec[2])
     elif spec[0] == '*': return eval_dice(spec[1]) * eval_dice(spec[2])
@@ -175,11 +218,16 @@ def visit_dice(d):
         s = ""
         for v in d[1]: s += "[{}]".format(v)
         return s
+    elif d[0] == 'x':
+        s = ""
+        return " + ".join([visit_dice(v) for v in d[1]])
+        return s
     else:
         return "{} {} {}".format(visit_dice(d[1]), d[0], visit_dice(d[2]))
 
 def visit_sum_dice(d):
     if isinstance(d, int): return str(d)
+    elif isinstance(d, list): return " + ".join([str(r) for r in d])
     else: return "{} {} {}".format(visit_sum_dice(d[1]), d[0], visit_sum_dice(d[2]))
 
 # Roll <dice> <sides>-sided dice
