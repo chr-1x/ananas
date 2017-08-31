@@ -1,12 +1,6 @@
 Ananas
 ======
 
-The Python Bot Framework for Mastodon
-
-    🍍
-
--- @acw​@mastodon.social
-
 What is Ananas?
 ---------------
 
@@ -93,7 +87,7 @@ The following fields are interpreted by the PineappleBot base classs and will
 work for every bot:
 
 **class**: the fully-specified python class that the runner script should
-instantiate to start your bot. e.g. "default.TraceryBot"
+instantiate to start your bot. e.g. "ananas.default.TraceryBot"
 
 **domain**\ ¹: the domain of the instance to run the bot on. Must support https
 connections. Only include the domain, no protocol or slashes. e.g.  "mastodon.social"
@@ -212,3 +206,9 @@ directory, the runner script will be able to load it.
 If you think your bot might be generally useful to other people, feel free to
 create a pull request on this repository to get it added to the collection of
 default bots.
+
+Distributing Bots
+-----------------
+
+Questions? Ping me on Mastodon at @chr@cybre.space or shoot me an email at
+chr@cybre.space and I'll answer as best I can!

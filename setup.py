@@ -8,7 +8,7 @@ with open(path.join(here, 'readme.rst'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(name='ananas',
-      version='1.0.0b1',
+      version='1.0.0b2',
       description='Mastodon bot framework built on Mastodon.py',
       long_description=long_description,
       author='khr',
@@ -26,10 +26,9 @@ setup(name='ananas',
       ],
 
       packages=find_packages(exclude=['custom', 'dist']),
-      py_modules=["ananas", "mastodon_patch", "run"],
       entry_points={
           'console_scripts': [
-              'ananas=run:main',
+              'ananas=ananas.run:main',
           ],
       },
       package_data={
