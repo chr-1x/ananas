@@ -1,13 +1,14 @@
 from setuptools import setup, find_packages
 from codecs import open
 from os import path
+import sys
 
 here = path.abspath(path.dirname(__file__))
-with open(path.join(here, 'README.md'), encoding='utf-8') as f:
+with open(path.join(here, 'readme.rst'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(name='ananas',
-      version='1.0.0a1',
+      version='1.0.0b1',
       description='Mastodon bot framework built on Mastodon.py',
       long_description=long_description,
       author='Andrew Chronister',
@@ -21,17 +22,19 @@ setup(name='ananas',
           'Topic :: Communications',
           'License :: OSI Approved :: MIT License',
           'Programming Language :: Python :: 3',
+          'Programming Language :: Python :: 3.3',
       ],
 
-      packages=find_packages(exclude=['custom']),
+      packages=find_packages(exclude=['custom', 'dist']),
+      py_modules=["ananas", "mastodon_patch", "run"],
       entry_points={
           'console_scripts': [
               'ananas=run:main',
           ],
       },
       package_data={
-          'sample': ['package_data.dat'],
+          'readme': ['readme.rst'],
       },
       install_requires=['requests', 'more_itertools', 'Mastodon.py'],
-      python_requires='~=3',
+      python_requires='~=3.3',
 )
