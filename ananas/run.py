@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import os, sys, signal, argparse, configparser, traceback
+import os, sys, signal, argparse, configparser, traceback, time
 from contextlib import closing
 from ananas import PineappleBot
 import ananas.default
@@ -56,7 +56,7 @@ def main():
     signal.signal(signal.SIGTERM, shutdown_all)
 
     try:
-        while(True): pass
+        while(True): time.sleep(60)
     except KeyboardInterrupt:
         shutdown_all(None, None)
 
