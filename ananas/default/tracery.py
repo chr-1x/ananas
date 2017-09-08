@@ -79,7 +79,7 @@ class TraceryBot(PineappleBot):
             else: raise ConfigurationError("Couldn't open grammar file")
 
     @reply
-    def post(self, mention, user):
+    def reply(self, mention, user):
         self.mastodon.status_post("@{} {}".format(user["acct"], 
                 self.grammar.eval(self.config.root_symbol)),
                 in_reply_to_id = mention["id"],
