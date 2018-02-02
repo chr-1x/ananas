@@ -167,7 +167,7 @@ class PineappleBot(StreamListener):
             if self[key]:
                 return self[key]
             else:
-                warn("The {} setting does not appear in config.cfg. Setting the self.config value to None.",
+                warning.warn("The {} setting does not appear in config.cfg. Setting the self.config value to None.".format(key),
                      RuntimeWarning,
                      1)
                 return None
