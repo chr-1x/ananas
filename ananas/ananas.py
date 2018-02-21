@@ -1,4 +1,5 @@
 import os, sys, re, time, threading, _thread
+import warning
 import configparser, inspect, getpass, traceback
 from datetime import datetime, timedelta, timezone
 from html.parser import HTMLParser
@@ -162,7 +163,14 @@ class PineappleBot(StreamListener):
             self._filename = filename
             self._cfg = configparser.ConfigParser()
             self._bot = bot
-        def __getattr__(self, key): return self[key]
+        def __getattr__(self, key): 
+            if self[key]:
+                return self[key]
+            else:
+                warning.warn("The {} setting does not appear in config.cfg. Setting the self.config value to None.".format(key),
+                     RuntimeWarning,
+                     1)
+                return None
         def __setattr__(self, key, value): self[key] = value
         def __delattr(self, key): del self[key]
 
