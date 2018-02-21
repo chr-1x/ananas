@@ -138,14 +138,15 @@ class HTMLTextParser(HTMLParser):
     def handle_data(self, data):
         self.text += data;
 
-def html_strip_tags(html_str, linebreaks=None):
+def html_strip_tags(html_str, linebreaks=None, lbchar=None):
     linebreaks = False if linebreaks == None else bool(linebreaks)
+    lbchar = "\n" if lbchar == None else lbchar
     if linebreaks:
         html_str = re.sub(r"<br([^>]*)>",
-                          "\n<br\1>",
+                          "{}<br\1>".format(lbchar),
                           html_str)
         html_str = re.sub(r"<p([^>]*)>",
-                          "\n<p\1>",
+                          "{}<p\1>".format(lbchar),
                           html_str)
     parser = HTMLTextParser()
     parser.feed(html_str)
