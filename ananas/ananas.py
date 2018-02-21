@@ -5,12 +5,10 @@ from datetime import datetime, timedelta, timezone
 from html.parser import HTMLParser
 import mastodon
 from mastodon import Mastodon, StreamListener
-import ananas.mastodon_patch
 
 # TODO: Polish up sample bots for distribution (and real use!)
 # TODO: Final pass on code quality and commenting
 # TODO: Write up documentation
-# TODO: Wrap up in packaging for pypi!!!
 
 ###
 # Decorators
@@ -329,7 +327,6 @@ class PineappleBot(StreamListener):
                                   access_token = self.config.access_token, 
                                   api_base_url = self.config.domain)
                                   #debug_requests = True)
-        self.log("debug", "Mastodon IS patched" if Mastodon._patched else "Mastodon IS NOT patched!!!")
         return True
 
     def interactive_login(self):
