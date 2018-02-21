@@ -281,7 +281,7 @@ class PineappleBot(StreamListener):
                 self.report_funcs.append(f)
 
         if len(self.reply_funcs) > 0:
-            self.stream = self.mastodon.user_stream(self, async=True)
+            self.stream = self.mastodon.stream_user(self, async=True)
         self.state = PineappleBot.RUNNING
         self.log(None, "Startup complete.")
 
