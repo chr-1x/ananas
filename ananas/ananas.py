@@ -140,8 +140,15 @@ class HTMLTextParser(HTMLParser):
     def handle_data(self, data):
         self.text += data;
 
-# TODO: add a parameter for whether to infer linebreaks from the html tags
-def html_strip_tags(html_str):
+def html_strip_tags(html_str, linebreaks=None):
+    linebreaks = False if linebreaks == None else bool(linebreaks)
+    if linebreaks:
+        html_str = re.sub(r"<br([^>]*)>",
+                          "\n<br\1>",
+                          html_str)
+        html_str = re.sub(r"<p([^>]*)>",
+                          "\n<p\1>",
+                          html_str)
     parser = HTMLTextParser()
     parser.feed(html_str)
     return parser.text
