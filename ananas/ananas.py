@@ -138,9 +138,8 @@ class HTMLTextParser(HTMLParser):
     def handle_data(self, data):
         self.text += data;
 
-def html_strip_tags(html_str, linebreaks=None, lbchar=None):
+def html_strip_tags(html_str, linebreaks=None, lbchar="\n"):
     linebreaks = False if linebreaks == None else bool(linebreaks)
-    lbchar = "\n" if lbchar == None else lbchar
     if linebreaks:
         html_str = re.sub(r"<br([^>]*)>",
                           "{}<br\1>".format(lbchar),
