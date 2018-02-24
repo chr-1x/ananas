@@ -1,5 +1,5 @@
 import os, sys, re, time, threading, _thread
-import warning
+import warnings
 import configparser, inspect, getpass, traceback
 from datetime import datetime, timedelta, timezone
 from html.parser import HTMLParser
@@ -175,7 +175,7 @@ class PineappleBot(StreamListener):
             if self[key]:
                 return self[key]
             else:
-                warning.warn("The {} setting does not appear in config.cfg. Setting the self.config value to None.".format(key),
+                warnings.warn("The {} setting does not appear in config.cfg. Setting the self.config value to None.".format(key),
                      RuntimeWarning,
                      1)
                 return None
