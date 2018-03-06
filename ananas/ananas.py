@@ -154,6 +154,24 @@ def html_strip_tags(html_str, linebreaks=None, lbchar=None):
     parser.feed(html_str)
     return parser.text
 
+def get_mentions(status_dict, exclude=[]):
+    """
+    Given a status dictionary, return all people mentioned in the toot,
+    excluding those in the list passed in exclude.
+    """
+    # Canonicalise the exclusion dictionary by lowercasing all names and
+    # removing leading @'s
+    for i, user in enumerate(exclude):
+        user = user.casefold()
+        if user[0] == "@":
+            user = user[1:]
+
+        exclude[i] = user
+
+    users = [user["username"] for user in status_dict["mentions"]
+             if user["username"].casefold() not in exclude]
+    return users
+
 class PineappleBot(StreamListener):
     """
     Main bot class
