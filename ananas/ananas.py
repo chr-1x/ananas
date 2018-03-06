@@ -219,6 +219,10 @@ class PineappleBot(StreamListener):
         self.report_funcs = []
 
         self.mastodon = None
+        self.account_info = None
+        self.username = None
+        self.default_privacy = None
+        self.default_sensitive = None
         self.stream = None
         self.interactive = interactive
         self.verbose = verbose
@@ -298,6 +302,13 @@ class PineappleBot(StreamListener):
 
         if len(self.reply_funcs) > 0:
             self.stream = self.mastodon.stream_user(self, async=True)
+
+        credentials = self.mastodon.account_verify_credentials()
+        self.account_info = credentials
+        self.username = credentials["username"]
+        self.default_privacy = credentials["source"]["privacy"]
+        self.default_sensitive = credentials["source"]["sensitive"]
+
         self.state = PineappleBot.RUNNING
         self.log(None, "Startup complete.")
 
@@ -402,6 +413,18 @@ class PineappleBot(StreamListener):
                 except Exception as e:
                     error = "Fatal exception: {}\n{}".format(repr(e), traceback.format_exc())
                     self.report_error(error, f.__name__)
+
+    def get_status_privacy(self, status_dict):
+        """Given a status dict, return the visibility that should be used.
+        This behaves like Mastodon does by default.
+        """
+        # Visibility rankings (higher is more limited)
+        visibility = ("public", "unlisted", "private", "direct")
+
+        default_privacy = visibility.index(self.default_privacy)
+        status_privacy = visibility.index(status_dict["visibility"])
+
+        return visibility[max(default_privacy, status_privacy)]
 
     # defaults, should be replaced by concrete bots with actual implementations
     # (if necessary, anyway)
