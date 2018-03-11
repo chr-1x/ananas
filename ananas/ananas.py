@@ -154,6 +154,24 @@ def html_strip_tags(html_str, linebreaks=None, lbchar=None):
     parser.feed(html_str)
     return parser.text
 
+def get_mentions(status_dict, exclude=[]):
+    """
+    Given a status dictionary, return all people mentioned in the toot,
+    excluding those in the list passed in exclude.
+    """
+    # Canonicalise the exclusion dictionary by lowercasing all names and
+    # removing leading @'s
+    for i, user in enumerate(exclude):
+        user = user.casefold()
+        if user[0] == "@":
+            user = user[1:]
+
+        exclude[i] = user
+
+    users = [user["username"] for user in status_dict["mentions"]
+             if user["username"].casefold() not in exclude]
+    return users
+
 class PineappleBot(StreamListener):
     """
     Main bot class
@@ -219,6 +237,10 @@ class PineappleBot(StreamListener):
         self.report_funcs = []
 
         self.mastodon = None
+        self.account_info = None
+        self.username = None
+        self.default_visibility = None
+        self.default_sensitive = None
         self.stream = None
         self.interactive = interactive
         self.verbose = verbose
@@ -298,6 +320,13 @@ class PineappleBot(StreamListener):
 
         if len(self.reply_funcs) > 0:
             self.stream = self.mastodon.stream_user(self, async=True)
+
+        credentials = self.mastodon.account_verify_credentials()
+        self.account_info = credentials
+        self.username = credentials["username"]
+        self.default_visibility = credentials["source"]["privacy"]
+        self.default_sensitive = credentials["source"]["sensitive"]
+
         self.state = PineappleBot.RUNNING
         self.log(None, "Startup complete.")
 
@@ -402,6 +431,18 @@ class PineappleBot(StreamListener):
                 except Exception as e:
                     error = "Fatal exception: {}\n{}".format(repr(e), traceback.format_exc())
                     self.report_error(error, f.__name__)
+
+    def get_reply_visibility(self, status_dict):
+        """Given a status dict, return the visibility that should be used.
+        This behaves like Mastodon does by default.
+        """
+        # Visibility rankings (higher is more limited)
+        visibility = ("public", "unlisted", "private", "direct")
+
+        default_visibility = visibility.index(self.default_visibility)
+        status_visibility = visibility.index(status_dict["visibility"])
+
+        return visibility[max(default_visibility, status_visibility)]
 
     # defaults, should be replaced by concrete bots with actual implementations
     # (if necessary, anyway)
