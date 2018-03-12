@@ -185,15 +185,14 @@ class PineappleBot(StreamListener):
         def __init__(self, bot, filename): 
             dict.__init__(self)
             self._filename = filename
-            self._cfg = ConfigObj(filename, create_empty=True)
+            self._cfg = ConfigObj(filename, create_empty=True, interpolation="configparser")
             self._bot = bot
         def __getattr__(self, key): 
             if self[key]:
                 return self[key]
             else:
-                warnings.warn("The {} setting does not appear in config.cfg. Setting the self.config value to None.".format(key),
-                     RuntimeWarning,
-                     1)
+                warnings.warn("The {} setting does not appear in {}. Setting the self.config value to None.".format(key, self._filename), 
+                        RuntimeWarning, 1)
                 return None
         def __setattr__(self, key, value): self[key] = value
         def __delattr(self, key): del self[key]
@@ -209,6 +208,7 @@ class PineappleBot(StreamListener):
                 self._bot.log("config", "Section {} not in {}, aborting.".format(self._name, self._filename))
                 return False
             self._bot.log("config", "Loading configuration from {}".format(self._filename))
+            self.update(self._cfg["DEFAULT"])
             self.update(self._cfg[self._name])
             return True
 
@@ -285,10 +285,8 @@ class PineappleBot(StreamListener):
                     try:
                         f()
                     except Exception as e:
-                        error = "Fatal exception: {}\n{}".format(repr(e), traceback.format_exc())
+                        error = "Exception encountered in @interval function: {}\n{}".format(repr(e), traceback.format_exc())
                         self.report_error(error, f.__name__)
-                        self.alive.release()
-                        return 0
 
                     t = datetime.now()
                     interval = interval_next(f, t, t)
