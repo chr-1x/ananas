@@ -208,7 +208,8 @@ class PineappleBot(StreamListener):
                 self._bot.log("config", "Section {} not in {}, aborting.".format(self._name, self._filename))
                 return False
             self._bot.log("config", "Loading configuration from {}".format(self._filename))
-            self.update(self._cfg["DEFAULT"])
+            if "DEFAULT" in self._cfg.sections:
+                self.update(self._cfg["DEFAULT"])
             self.update(self._cfg[self._name])
             return True
 
