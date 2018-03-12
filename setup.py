@@ -8,7 +8,7 @@ with open(path.join(here, 'readme.rst'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(name='ananas',
-      version='1.0.0b4',
+      version='1.0.0b6',
       description='Mastodon bot framework built on Mastodon.py',
       long_description=long_description,
       author='Andrew Chronister',
@@ -34,6 +34,6 @@ setup(name='ananas',
       package_data={
           'readme': ['readme.rst'],
       },
-      install_requires=['requests', 'more_itertools', 'Mastodon.py'],
+      install_requires=['requests', 'more_itertools', 'Mastodon.py', 'configobj'],
       python_requires='~=3.3',
 )
