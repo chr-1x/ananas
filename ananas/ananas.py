@@ -1,10 +1,11 @@
 import os, sys, re, time, threading, _thread
-import warning
+import warnings
 import configparser, inspect, getpass, traceback
 from datetime import datetime, timedelta, timezone
 from html.parser import HTMLParser
 import mastodon
 from mastodon import Mastodon, StreamListener
+from configobj import ConfigObj
 
 # TODO: Polish up sample bots for distribution (and real use!)
 # TODO: Final pass on code quality and commenting
@@ -166,13 +167,13 @@ class PineappleBot(StreamListener):
         def __init__(self, bot, filename): 
             dict.__init__(self)
             self._filename = filename
-            self._cfg = configparser.ConfigParser()
+            self._cfg = ConfigObj(filename, create_empty=True)
             self._bot = bot
         def __getattr__(self, key): 
             if self[key]:
                 return self[key]
             else:
-                warning.warn("The {} setting does not appear in config.cfg. Setting the self.config value to None.".format(key),
+                warnings.warn("The {} setting does not appear in config.cfg. Setting the self.config value to None.".format(key),
                      RuntimeWarning,
                      1)
                 return None
@@ -185,8 +186,8 @@ class PineappleBot(StreamListener):
             if (name != None):
                 self._name = name
 
-            self._cfg.read(self._filename)
-            if (name not in self._cfg.sections()): 
+            self._cfg.reload()
+            if (name not in self._cfg.sections): 
                 self._bot.log("config", "Section {} not in {}, aborting.".format(self._name, self._filename))
                 return False
             self._bot.log("config", "Loading configuration from {}".format(self._filename))
@@ -195,13 +196,12 @@ class PineappleBot(StreamListener):
 
         def save(self):
             """ Save back out to the config file. """
-            self._cfg.read(self._filename)
+            self._cfg.reload()
             for attr, value in self.items():
                 if attr[0] != '_' and not (attr in self._cfg["DEFAULT"] and self._cfg["DEFAULT"][attr] == value):
                     self._cfg[self._name][attr] = str(value)
             self._bot.log("config", "Saving configuration to {}...".format(self._filename))
-            with open(self._filename, 'w') as cfgfile:
-                self._cfg.write(cfgfile)
+            self._cfg.write()
             self._bot.log("config", "Done.")
             return True
 
