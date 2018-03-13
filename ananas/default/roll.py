@@ -100,7 +100,7 @@ def parse_dice(text):
         lhs = parse_roll(tokens)
         while True:
             try: 
-                if (peek(tokens)[0] not in "*x"): break
+                if (str(peek(tokens)[0]) not in "*x"): break
                 op = expect(tokens, lambda t,ws: t in "*x")
                 rhs = parse_roll(tokens)
                 lhs = (op, lhs, rhs)
@@ -187,6 +187,8 @@ def roll_dice(spec):
         if (c == None or roll == None):
             return ('*', roll_dice(spec[1]), roll_dice(spec[2]))
         else:
+            if (c[1] > 50):
+                raise SillyDiceError("I don't have that many dice!")
             return ("x", [roll_dice(roll) for i in range(c[1])])
     if spec[0] in ops:
         return (spec[0], roll_dice(spec[1]), roll_dice(spec[2]))
@@ -238,6 +240,10 @@ def perform_roll(dice=1, sides=6, keep=-1, drop=-1):
     rolls = []
     if sides == 0: 
         raise SillyDiceError("I don't have any zero-dimensional constructs but when I find one, I'll get back to you.")
+    if dice > 50:
+        raise SillyDiceError("I don't have that many dice!")
+    if sides > 1000:
+        raise SillyDiceError("I rolled the sphere and it rolled off the table.")
     for i in range(dice):
         roll = random.randint(1, sides)
         r.append(roll)
