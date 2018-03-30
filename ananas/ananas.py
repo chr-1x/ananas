@@ -360,8 +360,8 @@ class PineappleBot(StreamListener):
         self.mastodon = Mastodon(client_id = self.config.client_id, 
                                   client_secret = self.config.client_secret, 
                                   access_token = self.config.access_token, 
-                                  api_base_url = self.config.domain)
-                                  #debug_requests = True)
+                                  api_base_url = self.config.domain,
+                                  debug_requests = True)
         return True
 
     def interactive_login(self):
@@ -426,6 +426,40 @@ class PineappleBot(StreamListener):
                 except Exception as e:
                     error = "Fatal exception: {}\n{}".format(repr(e), traceback.format_exc())
                     self.report_error(error, f.__name__)
+
+    def on_close(self):
+        # Attempt to re-open the connection, since this is usually the result of
+        # the server just dropping the connection for one reason or another.
+        self.log(None, "Dropped streaming connection to {}".format(self.config.domain))
+        self.stream.close()
+        old_timeout = self.mastodon.request_timeout
+        # Don't wait forever for the instance to respond to the /api/v1/instance endpoint inside Mastodon.py
+        #self.mastodon.request_timeout = (10, 10)
+        print("thing1")
+        try:
+            self.mastodon.instance()
+        except mastodon.Mastodon.MastodonNetworkError as e:
+            self.log("Instance appears to have gone down")
+
+        print("thing2")
+        wait = 10
+        while(True):
+            try:
+                self.log(None, "Attempting to reinitialize in {}s...".format(wait))
+                time.sleep(wait)
+                self.stream = self.mastodon.stream_user(self, async=True)
+                # Call the instance API first, so that we don't get stuck in stream_user
+                #  (timeout doesn't work there for some reason)
+                self.mastodon.instance()
+
+                # If we get here without erroring, success
+                self.mastodon.request_timeout = old_timeout
+                self.log(None, "Successfully reinitialized streaming connection.")
+                break
+            except mastodon.Mastodon.MastodonNetworkError:
+                self.log(None, "Timed out")
+                wait *= 2
+                continue
 
     def get_reply_visibility(self, status_dict):
         """Given a status dict, return the visibility that should be used.
