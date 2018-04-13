@@ -228,9 +228,10 @@ class PineappleBot(StreamListener):
             """ Save back out to the config file. """
             self._cfg.reload()
             for attr, value in self.items():
-                if attr[0] != '_' and not (attr in self._cfg["DEFAULT"] and self._cfg["DEFAULT"][attr] == value):
-                    if isinstance(value, (list, tuple)):
-                        value = ",".join([str(v) for v in value])
+                if attr[0] != '_':
+                    if "DEFAULT" not in self._cfg or (not (attr in self._cfg["DEFAULT"] and self._cfg["DEFAULT"][attr] == value)):
+                        if isinstance(value, (list, tuple)):
+                            value = ",".join([str(v) for v in value])
                     self._cfg[self._name][attr] = str(value)
             self._bot.log("config", "Saving configuration to {}...".format(self._filename))
             self._cfg.write()
