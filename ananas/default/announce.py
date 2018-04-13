@@ -59,7 +59,7 @@ class AnnounceBot(PineappleBot):
                     for tag in post.tags:
                         if tag.name == self.config.hashtag:
                             self.log("debug", "BOOST: {}".format(post.id))
-                            #mastodon.status_reblog(post)
+                            mastodon.status_reblog(post)
                             self.config.last_seen[i] = post_id
                             break
 
