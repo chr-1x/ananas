@@ -170,6 +170,17 @@ def get_mentions(status_dict, exclude=[]):
              if user["username"].casefold() not in exclude]
     return users
 
+def parse_list(list_str, sep=',', strip_separator_whitespace=True):
+    list_str = list_str.strip()
+
+    if list_str[0] == '[': list_str = list_str[1:]
+    if list_str[-1] == ']': list_str = list_str[:-1]
+
+    l = list_str.split(sep)
+    if strip_separator_whitespace:
+        l = [item.strip() for item in l]
+    return l
+
 class PineappleBot(StreamListener):
     """
     Main bot class
@@ -218,6 +229,8 @@ class PineappleBot(StreamListener):
             self._cfg.reload()
             for attr, value in self.items():
                 if attr[0] != '_' and not (attr in self._cfg["DEFAULT"] and self._cfg["DEFAULT"][attr] == value):
+                    if isinstance(value, (list, tuple)):
+                        value = ",".join([str(v) for v in value])
                     self._cfg[self._name][attr] = str(value)
             self._bot.log("config", "Saving configuration to {}...".format(self._filename))
             self._cfg.write()
@@ -360,8 +373,8 @@ class PineappleBot(StreamListener):
         self.mastodon = Mastodon(client_id = self.config.client_id, 
                                   client_secret = self.config.client_secret, 
                                   access_token = self.config.access_token, 
-                                  api_base_url = self.config.domain,
-                                  debug_requests = True)
+                                  api_base_url = self.config.domain)
+                                  #debug_requests = True)
         return True
 
     def interactive_login(self):
