@@ -1,5 +1,5 @@
 import os, sys, re, time, threading, _thread
-import warnings
+import warnings, tempfile
 import configparser, inspect, getpass, traceback
 from datetime import datetime, timedelta, timezone
 from html.parser import HTMLParser
@@ -196,8 +196,9 @@ class PineappleBot(StreamListener):
         def __init__(self, bot, filename): 
             dict.__init__(self)
             self._filename = filename
-            self._cfg = ConfigObj(filename, create_empty=True, interpolation="configparser")
             self._bot = bot
+            self.open(filename)
+
         def __getattr__(self, key): 
             if self[key]:
                 return self[key]
@@ -207,6 +208,11 @@ class PineappleBot(StreamListener):
                 return None
         def __setattr__(self, key, value): self[key] = value
         def __delattr(self, key): del self[key]
+
+        def open(self, filename):
+            self._file = open(self._filename, "r+")
+            self._cfg = ConfigObj(self._file, interpolation="configparser")
+            self._cfg.filename = self._filename
 
         def load(self, name=None):
             """ Load section <name> from the config file into this object,
@@ -234,7 +240,19 @@ class PineappleBot(StreamListener):
                             value = ",".join([str(v) for v in value])
                     self._cfg[self._name][attr] = str(value)
             self._bot.log("config", "Saving configuration to {}...".format(self._filename))
-            self._cfg.write()
+
+            try: 
+                # Do a dance to write to a temp file and then move it over the
+                # user config, so that it won't clobber the config if the FS is
+                # full
+                t = tempfile.NamedTemporaryFile(delete=False)
+                self._cfg.write(t)
+                self._file.close()
+                t.close()
+                os.replace(t.name, self._filename)
+            except OSError as e:
+                self._bot.log("config", "ERROR: Could not save config to file! {}".format(e))
+
             self._bot.log("config", "Done.")
             return True
 
