@@ -34,6 +34,6 @@ setup(name='ananas',
       package_data={
           'readme': ['readme.rst'],
       },
-      install_requires=['requests', 'more_itertools', 'Mastodon.py', 'configobj'],
+      install_requires=['requests', 'more_itertools', 'Mastodon.py>=1.3.0', 'configobj'],
       python_requires='~=3.3',
 )
