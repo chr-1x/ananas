@@ -2,6 +2,7 @@ import os, sys, re, time, threading, _thread
 import warnings, tempfile
 import configparser, inspect, getpass, traceback
 from datetime import datetime, timedelta, timezone
+from collections import Iterable
 from html.parser import HTMLParser
 import mastodon
 from mastodon import Mastodon, StreamListener
@@ -30,12 +31,66 @@ def interval(seconds):
         return f
     return wrapper
 
+def _cronslash(s, cat):
+    duration = {
+        "second": 60,
+        "minute": 60,
+        "hour": 24,
+        "day_of_week": 7,
+        "day_of_month": 31,
+        "month": 12,
+        "year": 9999, # Increase if this library is still in use in CE 9999
+    }[cat]
+    match = re.match(r"\*/(\d+)", s)
+    n = None
+    if match:
+        n = int(match.group(1))
+    elif s == "*":
+        n = 1
+    print("range(0, {}, {})".format(duration, n))
+    if n:
+        return range(0, duration, n)
+    return None
+
+def _expand_scheduledict(scheduledict):
+    """Converts a dict of items, some of which are scalar and some of which are
+    lists, to a list of dicts with scalar items."""
+    result = []
+    def f(d):
+        nonlocal result
+        #print(d)
+        d2 = {}
+        for k,v in d.items():
+            if isinstance(v, str) and _cronslash(v, k) is not None:
+                d[k] = _cronslash(v, k)
+
+        for k,v in d.items():
+            if isinstance(v, Iterable):
+                continue
+            else:
+                d2[k] = v
+
+        if len(d2.keys()) == len(d.keys()):
+            result.append(d2)
+            return
+
+        for k,v in d.items():
+            if isinstance(v, Iterable):
+                for i in v:
+                    dprime = dict(**d)
+                    dprime[k] = i
+                    f(dprime)
+                break
+    f(scheduledict)
+    return result
+
 def schedule(**kwargs):
     def wrapper(f):
+        schedules = _expand_scheduledict(kwargs)
         if (not hasattr(f, "schedule")):
-            f.schedule = [kwargs]
+            f.schedule = schedules
         else:
-            f.schedule.append(kwargs)
+            f.schedule.extend(schedules)
         return f
     return wrapper
 
@@ -72,7 +127,7 @@ def interval_next(f, t = datetime.now(), tLast = datetime.now()):
                are specified, then day_of_month is used and day_of_week is ignored.
          ∗ If all are unspecified treat it as having no schedule specified
      ∗ If both a schedule and an interval are specified, TODO but it should do
-       something along the lines of finding the next multiple of interval from tLast 
+       something along the lines of finding the next multiple of interval from tLast
        that fits the schedule spec and returning the number of seconds until then.
 
     NOTE: If the time until the next event is greater than an hour in the
@@ -91,7 +146,7 @@ def interval_next(f, t = datetime.now(), tLast = datetime.now()):
     if (has_schedule): # and not has_interval):
         interval_min = 3600
         for s in f.schedule:
-            interval = schedule_next(s, t) 
+            interval = schedule_next(s, t)
             if interval < interval_min:
                 interval_min = interval
         return interval_min
@@ -193,17 +248,17 @@ class PineappleBot(StreamListener):
     STOPPING = 3
 
     class Config(dict):
-        def __init__(self, bot, filename): 
+        def __init__(self, bot, filename):
             dict.__init__(self)
             self._filename = filename
             self._bot = bot
             self.open(filename)
 
-        def __getattr__(self, key): 
+        def __getattr__(self, key):
             if self[key]:
                 return self[key]
             else:
-                warnings.warn("The {} setting does not appear in {}. Setting the self.config value to None.".format(key, self._filename), 
+                warnings.warn("The {} setting does not appear in {}. Setting the self.config value to None.".format(key, self._filename),
                         RuntimeWarning, 1)
                 return None
         def __setattr__(self, key, value): self[key] = value
@@ -221,7 +276,7 @@ class PineappleBot(StreamListener):
                 self._name = name
 
             self._cfg.reload()
-            if (name not in self._cfg.sections): 
+            if (name not in self._cfg.sections):
                 self._bot.log("config", "Section {} not in {}, aborting.".format(self._name, self._filename))
                 return False
             self._bot.log("config", "Loading configuration from {}".format(self._filename))
@@ -241,7 +296,7 @@ class PineappleBot(StreamListener):
                     self._cfg[self._name][attr] = str(value)
             self._bot.log("config", "Saving configuration to {}...".format(self._filename))
 
-            try: 
+            try:
                 # Do a dance to write to a temp file and then move it over the
                 # user config, so that it won't clobber the config if the FS is
                 # full
@@ -250,8 +305,10 @@ class PineappleBot(StreamListener):
                 self._file.close()
                 t.close()
                 os.replace(t.name, self._filename)
+                self.open(self._filename)
             except OSError as e:
                 self._bot.log("config", "ERROR: Could not save config to file! {}".format(e))
+                return False
 
             self._bot.log("config", "Done.")
             return True
@@ -292,7 +349,8 @@ class PineappleBot(StreamListener):
         ts = datetime.now()
         msg_f = "[{0:%Y-%m-%d %H:%M:%S}] {1}: {2}".format(ts, id, msg)
 
-        if self.log_file.closed or self.log_to_stderr: print(msg_f, file=sys.stderr)
+        if self.log_file.closed or self.log_to_stderr:
+            print(msg_f, file=sys.stderr)
         elif not self.log_file.closed: print(msg_f, file=self.log_file)
 
     def startup(self):
@@ -304,7 +362,7 @@ class PineappleBot(StreamListener):
         except Exception as e:
             self.log(None, "Fatal exception: {}\n{}".format(repr(e), traceback.format_exc()))
             return
-        
+
         def interval_threadproc(f):
             self.log(f.__name__, "Started")
             t = datetime.now()
@@ -373,7 +431,7 @@ class PineappleBot(StreamListener):
         self.log_file.close()
 
     def login(self):
-        if self.interactive and not self.interactive_login(): 
+        if self.interactive and not self.interactive_login():
             self.log("api", "Interactive login failed, exiting.")
             return False
         elif "domain" not in self.config:
@@ -389,9 +447,9 @@ class PineappleBot(StreamListener):
             self.log("api", "No access key set in config and interactive = False, exiting.")
             return False
 
-        self.mastodon = Mastodon(client_id = self.config.client_id, 
-                                  client_secret = self.config.client_secret, 
-                                  access_token = self.config.access_token, 
+        self.mastodon = Mastodon(client_id = self.config.client_id,
+                                  client_secret = self.config.client_secret,
+                                  access_token = self.config.access_token,
                                   api_base_url = self.config.domain)
                                   #debug_requests = True)
         return True
@@ -403,13 +461,13 @@ class PineappleBot(StreamListener):
                 domain = domain.strip()
                 if (domain == ""): domain = "mastodon.social"
                 self.config.domain = domain
-            # We have to generate these two together, if just one is 
+            # We have to generate these two together, if just one is
             # specified in the config file it's no good.
             if (not hasattr(self, "client_id") or not hasattr(self, "client_secret")):
                 client_name = input("{0}: Enter a name for this bot or service [{0}]: ".format(self.name))
                 client_name = client_name.strip()
                 if (client_name == ""): client_name = self.name
-                self.config.client_id, self.config.client_secret = Mastodon.create_app(client_name, 
+                self.config.client_id, self.config.client_secret = Mastodon.create_app(client_name,
                         api_base_url="https://"+self.config.domain)
                 # TODO handle failure
                 self.config.save()
