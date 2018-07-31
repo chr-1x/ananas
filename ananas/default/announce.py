@@ -1,4 +1,4 @@
-from ananas import PineappleBot, interval, ConfigurationError
+from ananas import PineappleBot, interval, schedule, ConfigurationError
 
 class AnnounceBot(PineappleBot):
     """Bot that regularly checks approved users' feeds for posts with a
@@ -43,11 +43,12 @@ class AnnounceBot(PineappleBot):
         self.update()
 
     # Check every 1 minute
-    @interval(1 * 60)
+    #@interval(1 * 60)
+    @schedule(minute="*/2", second="*")
     def update(self):
+        self.log("debug", "Updating!")
         for i, user in enumerate(self.users):
             lowest_seen_this_time = self.config.last_seen[i]
-            
             while (True):
                 posts = self.mastodon.account_statuses(user, since_id=lowest_seen_this_time+1, exclude_replies=True)
                 for post in posts:
