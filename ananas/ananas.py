@@ -300,7 +300,7 @@ class PineappleBot(StreamListener):
                 # Do a dance to write to a temp file and then move it over the
                 # user config, so that it won't clobber the config if the FS is
                 # full
-                t = tempfile.NamedTemporaryFile(delete=False)
+                t = tempfile.NamedTemporaryFile(delete=False, dir=os.path.dirname(self._filename))
                 self._cfg.write(t)
                 self._file.close()
                 t.close()

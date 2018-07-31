@@ -8,7 +8,7 @@ with open(path.join(here, 'readme.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(name='ananas',
-      version='1.0.0b16',
+      version='1.0.0b17',
       description='Mastodon bot framework built on Mastodon.py',
       long_description=long_description,
       long_description_content_type="text/markdown",
