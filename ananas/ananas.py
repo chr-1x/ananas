@@ -405,7 +405,8 @@ class PineappleBot(StreamListener):
                 self.report_funcs.append(f)
 
         if len(self.reply_funcs) > 0:
-            self.stream = self.mastodon.stream_user(self, run_async=True)
+            self.stream = self.mastodon.stream_user(self, run_async=True,
+                                                    reconnect_async=True)
 
         credentials = self.mastodon.account_verify_credentials()
         self.account_info = credentials
@@ -537,7 +538,8 @@ class PineappleBot(StreamListener):
             try:
                 self.log(None, "Attempting to reinitialize in {}s...".format(wait))
                 time.sleep(wait)
-                self.stream = self.mastodon.stream_user(self, run_async=True)
+                self.stream = self.mastodon.stream_user(self, run_async=True,
+                                                        reconnect_async=True)
                 # Call the instance API first, so that we don't get stuck in stream_user
                 #  (timeout doesn't work there for some reason)
                 self.mastodon.instance()
