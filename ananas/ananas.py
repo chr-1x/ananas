@@ -47,7 +47,7 @@ def _cronslash(s, cat):
         n = int(match.group(1))
     elif s == "*":
         n = 1
-    print("range(0, {}, {})".format(duration, n))
+    #print("range(0, {}, {})".format(duration, n))
     if n:
         return range(0, duration, n)
     return None
@@ -351,7 +351,7 @@ class PineappleBot(StreamListener):
 
         if self.log_file.closed or self.log_to_stderr:
             print(msg_f, file=sys.stderr)
-        elif not self.log_file.closed: print(msg_f, file=self.log_file)
+        elif not self.log_file.closed: print(msg_f, file=self.log_file, flush=True)
 
     def startup(self):
         self.state = PineappleBot.STARTING
@@ -509,7 +509,7 @@ class PineappleBot(StreamListener):
             f(error)
 
     def on_notification(self, notif):
-        self.log("debug", "Got a {} from {} at {}".format(notif["type"], notif["account"]["username"], notif["created_at"]))
+        if self.verbose: self.log("debug", "Got a {} from {} at {}".format(notif["type"], notif["account"]["username"], notif["created_at"]))
         if (notif["type"] == "mention"):
             for f in self.reply_funcs:
                 try:
@@ -526,13 +526,13 @@ class PineappleBot(StreamListener):
         old_timeout = self.mastodon.request_timeout
         # Don't wait forever for the instance to respond to the /api/v1/instance endpoint inside Mastodon.py
         #self.mastodon.request_timeout = (10, 10)
-        print("thing1")
+        #print("thing1")
         try:
             self.mastodon.instance()
         except mastodon.Mastodon.MastodonNetworkError as e:
             self.log("Instance appears to have gone down")
 
-        print("thing2")
+        #print("thing2")
         wait = 10
         while(True):
             try:
