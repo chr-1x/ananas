@@ -43,7 +43,8 @@ def main():
             exec("from {0} import {1}; bots.append({1}('{2}', name='{3}', interactive={4}, verbose={5}))"
                     .format(module, botclass, args.config, bot, args.interactive, args.verbose))
         except ModuleNotFoundError as e:
-            print("{}: couldn't load module {}, skipping {}.".format(prog, module, bot))
+            print("{}: encountered the following error loading module {}, skipping {}.".format(prog, module, bot))
+            print("{}: the error was: {}".format(prog, e)
             continue
         except Exception as e:
             print("{}: fatal exception loading bot {}: {}\n{}".format(prog, bot, repr(e), traceback.format_exc()))
