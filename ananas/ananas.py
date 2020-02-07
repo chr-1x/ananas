@@ -338,7 +338,7 @@ class PineappleBot(StreamListener):
 
         self.config = PineappleBot.Config(self, cfgname)
         self.init() # Call user init to initialize bot-specific properties to default values
-        if not self.config.load(self.name): return
+        if not self.config.load(self.name,silent=not verbose): return
         if not self.login(): return
 
         self.startup()
