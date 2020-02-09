@@ -269,7 +269,7 @@ class PineappleBot(StreamListener):
             self._cfg = ConfigObj(self._file, interpolation="configparser")
             self._cfg.filename = self._filename
 
-        def load(self, name=None):
+        def load(self, name=None, silent=False):
             """ Load section <name> from the config file into this object,
             replacing/overwriting any values currently cached in here."""
             if (name != None):
@@ -279,7 +279,7 @@ class PineappleBot(StreamListener):
             if (name not in self._cfg.sections):
                 self._bot.log("config", "Section {} not in {}, aborting.".format(self._name, self._filename))
                 return False
-            self._bot.log("config", "Loading configuration from {}".format(self._filename))
+            if not silent: self._bot.log("config", "Loading configuration from {}".format(self._filename))
             if "DEFAULT" in self._cfg.sections:
                 self.update(self._cfg["DEFAULT"])
             self.update(self._cfg[self._name])
@@ -338,7 +338,7 @@ class PineappleBot(StreamListener):
 
         self.config = PineappleBot.Config(self, cfgname)
         self.init() # Call user init to initialize bot-specific properties to default values
-        if not self.config.load(self.name): return
+        if not self.config.load(self.name,silent=not verbose): return
         if not self.login(): return
 
         self.startup()
