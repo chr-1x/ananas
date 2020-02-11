@@ -266,7 +266,7 @@ class PineappleBot(StreamListener):
 
         def open(self, filename):
             self._file = open(self._filename, "r+")
-            self._cfg = ConfigObj(self._file, interpolation="configparser")
+            self._cfg = ConfigObj(self._file, interpolation="configparser",encoding="utf-8")
             self._cfg.filename = self._filename
 
         def load(self, name=None, silent=False):
