@@ -73,14 +73,14 @@ work for every bot:
 **class**: the fully-specified python class that the runner script should
 instantiate to start your bot. e.g. "ananas.default.TraceryBot"
 
-**domain**\ ¹: the domain of the instance to run the bot on. Must support https
+**domain** ¹: the domain of the instance to run the bot on. Must support https
 connections. Only include the domain, no protocol or slashes. e.g.  "mastodon.social"
 
-**client\_id**\ ¹, **client\_secret**\ ¹: the tokens that the instance uses to identify
+**client\_id** ¹, **client\_secret** ¹: the tokens that the instance uses to identify
 what client this bot is posting from/as. Will be used to determine what's
 displayed underneath all the posts made by this bot.
 
-**access\_token**\ ¹: the access token used to authenticate API requests with the
+**access\_token** ¹: the access token used to authenticate API requests with the
 instance. Make sure this is secret, don't distribute config files with this
 field filled out or people will be able to post under the account this token was
 created with.
