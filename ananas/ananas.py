@@ -2,7 +2,7 @@ import os, sys, re, time, threading, _thread
 import warnings, tempfile
 import configparser, inspect, getpass, traceback
 from datetime import datetime, timedelta, timezone
-from collections import Iterable
+from collections.abc import Iterable
 from html.parser import HTMLParser
 import mastodon
 from mastodon import Mastodon, StreamListener
