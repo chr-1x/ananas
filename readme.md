@@ -108,8 +108,9 @@ least one of the following decorators:
 other user. Decorator takes no parameters, but should only be called on
 functions matching this signature: `def reply_fn(self, mention, user)`.
 `mention` will be the dictionary corresponding to the status containing the
-mention (as returned by the [mastodon API](https://github.com/tootsuite/documentation/blob/master/Using-the-API/API.md),
-`user` will be the dictionary corresponding to the user that mentioned the bot.
+mention (as returned by the [mastodon API](https://docs.joinmastodon.org/methods/statuses/)),
+`user` will be the dictionary corresponding to the user that mentioned the bot
+(again, according to the [API](https://docs.joinmastodon.org/methods/accounts/)).
 
 **@ananas.interval(secs)**: Calls the decorated function every `secs` seconds,
 starting when the bot is initialized. For intervals longer than ~an hour, you
