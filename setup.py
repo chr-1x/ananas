@@ -8,7 +8,7 @@ with open(path.join(here, 'readme.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(name='ananas',
-      version='1.0.0b17',
+      version='1.1.0',
       description='Mastodon bot framework built on Mastodon.py',
       long_description=long_description,
       long_description_content_type="text/markdown",
@@ -18,7 +18,8 @@ setup(name='ananas',
       keywords='mastodon microblogging bot',
       url='https://github.com/chronister/ananas',
       classifiers=[
-          'Development Status :: 4 - Beta',
+          'Development Status :: 5 - Production/Stable',
+          'Environment :: Console',
           'Intended Audience :: Developers',
           'Topic :: Communications',
           'License :: OSI Approved :: MIT License',
