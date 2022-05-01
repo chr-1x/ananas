@@ -1,0 +1,14 @@
+1.1.0
+-----------
+This release contains some fixes and changes from contributors:
+
+ - A couple log printing fixes (puphime, PR#19)
+ - Pass error message through (joyeusenoelle, PR#20)
+ - allow silent config loads (puphime, PR#21)
+ - use utf-8 for config files instead of ascii (puphime, PR#22)
+ - fix Iterable import for python >=3.10 (codl, PR#25)
+ - Update API links (joyeusenoelle, PR#28)
+
+1.0.0b17/18
+-----------
+Final beta version, published on pypi 2018-2022.
